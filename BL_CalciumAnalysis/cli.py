@@ -1,7 +1,7 @@
 import os
 import json
 import pandas as pd
-
+from PIL import Image
 class ProjectDataManager:
     """
     Loads and organizes a structured calcium imaging project based on the config.json file.
@@ -39,4 +39,88 @@ class ProjectDataManager:
 
     def show(self):
         """Print the dataframe of all recordings."""
-        print(self.directory_df)
+        print(self.directory_df)      
+class SessionImageProcessor:
+    """
+    A processing class that interfaces with ProjectDataManager to apply image analysis functions
+    to each session's raw data (specifically multi-frame TIFs located in the 'raw/' folder).
+    """
+
+    def __init__(self, project_data_manager):
+        self.project = project_data_manager
+
+    def get_session_raw_data(self, session_id):
+        """
+        Locate the first .tif file in the 'raw/' folder of the session.
+
+        Parameters:
+        session_id (int): Numerical session identifier.
+
+        Returns:
+        str or None: Path to the TIF file if found, else None.
+        """
+        session_row = self.project.directory_df[self.project.directory_df['session_id'] == session_id]
+        if session_row.empty:
+            print(f"No session found with ID {session_id}")
+            return None
+
+        raw_folder = os.path.join(session_row.iloc[0]['path'], 'raw')
+        if not os.path.exists(raw_folder):
+            print(f"Raw folder does not exist for session {session_id}")
+            return None
+
+        for file in os.listdir(raw_folder):
+            if file.endswith('.tif') or file.endswith('.tiff'):
+                return os.path.join(raw_folder, file)
+
+        print(f"No TIF files found in session {session_id} raw folder")
+        return None
+
+    def max_projection_mean_values(self, tif_path):
+        """
+        Generates a mean projection from a multi-frame TIF and saves it.
+        """
+        with Image.open(tif_path) as img:
+            sum_image = np.zeros((img.height, img.width), dtype=np.float32)
+
+            for i in range(img.n_frames):
+                img.seek(i)
+                sum_image += np.array(img, dtype=np.float32)
+
+            mean_image = sum_image / img.n_frames
+
+        processed_dir = os.path.join(os.path.dirname(tif_path), 'processed_data', 'processed_image_analysis_output')
+        os.makedirs(processed_dir, exist_ok=True)
+
+        file_name = os.path.basename(tif_path)
+        max_proj_image_path = os.path.join(processed_dir, file_name.replace('.tif', '_max_projection.tif'))
+
+        Image.fromarray(mean_image.astype(np.uint8)).save(max_proj_image_path)
+        print(f"Max projection saved: {max_proj_image_path}")
+        return max_proj_image_path
+
+    def analyze_session_max_projection(self, session_id):
+        tif_path = self.get_session_raw_data(session_id)
+        if isinstance(tif_path, str) and tif_path.endswith('.tif'):
+            processed_dir = os.path.join(os.path.dirname(tif_path), 'processed_data', 'processed_image_analysis_output')
+            max_proj_filename = os.path.basename(tif_path).replace('.tif', '_max_projection.tif')
+            max_proj_path = os.path.join(processed_dir, max_proj_filename)
+
+            if os.path.exists(max_proj_path):
+                print(f"Max projection already exists for session {session_id}. Skipping.")
+                return max_proj_path
+            else:
+                print(f"Processing max projection for session {session_id}...")
+                return self.max_projection_mean_values(tif_path)
+        else:
+            return f"No valid TIF found for session {session_id}"
+
+    def analyze_all_sessions(self):
+        results = {}
+        for session_id in self.project.directory_df['session_id']:
+            try:
+                results[session_id] = self.analyze_session_max_projection(session_id)
+            except Exception as e:
+                print(f"Error processing session {session_id}: {e}")
+                results[session_id] = str(e)
+        return results
