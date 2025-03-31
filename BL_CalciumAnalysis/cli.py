@@ -39,7 +39,30 @@ class ProjectDataManager:
 
     def show(self):
         """Print the dataframe of all recordings."""
-        print(self.directory_df)      
+        print(self.directory_df)
+    
+    def is_valid_structure(self):
+        """
+        Checks whether the expected folder structure exists for all groups and recordings.
+        Returns True if everything is in place, False otherwise.
+        """
+        try:
+            # Load config
+            for group in self.config["groups"]:
+                if not os.path.isdir(group["path"]):
+                    return False
+                for recording in group["recordings"]:
+                    rec_path = recording["path"]
+                    required_subdirs = ["raw", "metadata", "processed", "analysis", "figures"]
+                    if not os.path.isdir(rec_path):
+                        return False
+                    for sub in required_subdirs:
+                        if not os.path.isdir(os.path.join(rec_path, sub)):
+                            return False
+            return True
+        except Exception as e:
+            print(f"Validation error: {e}")
+            return False      
 class SessionImageProcessor:
     """
     A processing class that interfaces with ProjectDataManager to apply image analysis functions

@@ -72,7 +72,17 @@ def main():
         return
 
     project_root = os.path.join(base_path, project_name)
+    config_path = os.path.join(project_root, "config.json")
 
+    # Check if project is already initialized
+    if os.path.exists(config_path):
+        print(f"⚠️ A project already exists at {project_root}.")
+        overwrite = get_user_input("Do you want to overwrite the existing project structure? (yes/no)", "no")
+        if overwrite.lower() != "yes":
+            print("🔁 Keeping existing project. Exiting without changes.")
+            return
+
+    # Gather structure details from user
     num_groups = int(get_user_input("How many groups?", "2"))
 
     group_info = {}
@@ -81,6 +91,7 @@ def main():
         recordings_per_group = int(get_user_input(f"How many recordings for {group_name}?", "2"))
         group_info[group_name] = recordings_per_group
 
+    # Create structure
     create_directory_structure(project_root, group_info)
 
 # 🚀 Run the script when executed
