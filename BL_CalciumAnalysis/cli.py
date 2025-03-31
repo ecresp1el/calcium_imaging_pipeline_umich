@@ -34,7 +34,7 @@ class ProjectDataManager:
                     "recording": rec['recording_name'],
                     "path": rec['path']
                 })
-                session_counter += 1Adds a new column session_id that starts at 1 and increments for every recording.
+                session_counter += 1
         return pd.DataFrame(entries)
 
     def show(self):
