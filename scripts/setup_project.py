@@ -60,12 +60,33 @@ def create_directory_structure(project_root, group_info):
 def main():
     print("🔹 Welcome to the Project Setup Script 🔹")
 
-    # First ask for the project folder name
-    project_name = get_user_input("Enter project directory name", "biolumi_project")
+    # Ask the user if the project already exists
+    use_existing = get_user_input("Do you want to open an existing project folder? (yes/no)", "no")
 
-    # Then ask user to select base directory via file dialog
+    if use_existing.lower() == "yes":
+        # Select the existing project directory
+        root = tk.Tk()
+        root.withdraw()
+        existing_project_path = filedialog.askdirectory(title="Select your existing project folder")
+        if not existing_project_path:
+            print("❌ No folder selected. Exiting.")
+            return
+
+        config_path = os.path.join(existing_project_path, "config.json")
+        if os.path.exists(config_path):
+            print(f"✅ Found config.json at {existing_project_path}.")
+            print("✅ Project appears initialized.")
+            return
+        else:
+            print("⚠️ This folder does not contain a config.json file. Please ensure it's a valid project folder.")
+            return
+
+    # 🆕 Otherwise, initialize a new project
+    project_name = get_user_input("Enter new project directory name", "biolumi_project")
+
+    # Ask user to select base directory where this project will be created
     root = tk.Tk()
-    root.withdraw()  # Hide main window
+    root.withdraw()
     base_path = filedialog.askdirectory(title=f"Select base directory to create project folder '{project_name}'")
     if not base_path:
         print("❌ No folder selected. Exiting.")
@@ -74,24 +95,21 @@ def main():
     project_root = os.path.join(base_path, project_name)
     config_path = os.path.join(project_root, "config.json")
 
-    # Check if project is already initialized
     if os.path.exists(config_path):
         print(f"⚠️ A project already exists at {project_root}.")
-        overwrite = get_user_input("Do you want to overwrite the existing project structure? (yes/no)", "no")
+        overwrite = get_user_input("Do you want to overwrite it? (yes/no)", "no")
         if overwrite.lower() != "yes":
-            print("🔁 Keeping existing project. Exiting without changes.")
+            print("🔁 Keeping existing project. Exiting.")
             return
 
-    # Gather structure details from user
+    # Get group and recording info
     num_groups = int(get_user_input("How many groups?", "2"))
-
     group_info = {}
     for i in range(1, num_groups + 1):
         group_name = get_user_input(f"Enter name for group {i}", f"group_{i:03d}")
         recordings_per_group = int(get_user_input(f"How many recordings for {group_name}?", "2"))
         group_info[group_name] = recordings_per_group
 
-    # Create structure
     create_directory_structure(project_root, group_info)
 
 # 🚀 Run the script when executed
