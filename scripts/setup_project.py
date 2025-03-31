@@ -60,15 +60,17 @@ def create_directory_structure(project_root, group_info):
 def main():
     print("🔹 Welcome to the Project Setup Script 🔹")
 
-    # Ask user for base folder via file dialog
+    # First ask for the project folder name
+    project_name = get_user_input("Enter project directory name", "biolumi_project")
+
+    # Then ask user to select base directory via file dialog
     root = tk.Tk()
     root.withdraw()  # Hide main window
-    base_path = filedialog.askdirectory(title="Select base directory to create project folder")
+    base_path = filedialog.askdirectory(title=f"Select base directory to create project folder '{project_name}'")
     if not base_path:
         print("❌ No folder selected. Exiting.")
         return
 
-    project_name = get_user_input("Enter project directory name", "biolumi_project")
     project_root = os.path.join(base_path, project_name)
 
     num_groups = int(get_user_input("How many groups?", "2"))

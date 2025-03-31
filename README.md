@@ -1,50 +1,82 @@
 
 #Biolumi Calcium Imaging Analysis
 
-📌 Overview
 
-This project provides a structured approach for analyzing calcium imaging data. It ensures reproducibility, organization, and automation by setting up a standardized directory structure and enabling image processing via the command line.
+# 📁 Project: mannyproject
 
-🛠️ Installation & Setup
+Welcome to the **mannyproject** calcium imaging data repository. This folder contains a fully structured organization of raw data, metadata, processed results, analysis outputs, and figures, grouped by experimental condition and individual recording sessions.
 
-1️⃣ Set Up the Conda Environment
+This layout is designed to be consistent, easy to navigate, and friendly for both manual exploration and automated data processing.
 
-Ensure you have Miniconda or Anaconda installed.
+---
 
-Run the following command to create and activate the environment:
+## 🗂️ Folder Structure Overview
+mannyproject/
+├── control/
+│   ├── recording_001/
+│   │   ├── raw/
+│   │   ├── metadata/
+│   │   ├── processed/
+│   │   ├── analysis/
+│   │   ├── figures/
+│   │   └── README.md
+│   ├── recording_002/
+│   │   └── … (same structure)
+│   └── README.md
+├── stimulated/
+│   └── … (same structure as control)
+├── config.json
+└── README.md  ← (this file)
 
-2️⃣ Set Up the Project Directory Structure
+---
 
-Run the setup script to create a standardized directory tree for storing image data:
+## 📌 Project-Level Contents
 
-You'll be prompted to enter:
+- `config.json`: Contains a structured summary of all experimental groups and recordings.
+- `README.md`: You're reading it! Describes the structure and how to use this project.
 
-Project directory name (default: biolumi_project)
+---
 
-Number of groups (default: 2)
+## 📁 Group Folders (`control/`, `stimulated/`, etc.)
 
-Number of recordings per group (default: 2)
+Each group folder represents a different **experimental condition** (e.g., Control, Drug Treated, Stimulated). Inside each are folders for every individual **recording session**.
 
-This will create a structure like:
+Inside the group folder:
+- `recording_001/`, `recording_002/`, etc.: One folder per data collection session.
+- `README.md`: A group-level description you can edit to track metadata or observations.
 
-3️⃣ Process Images Using CLI
+---
 
-After setting up the structure, you can process images.
+## 📂 Recording Session Folders
 
-🔹 Process a Single Image
+Each recording folder has this structure:
 
-🔹 Process All Images in a Directory
+| Folder       | Description                                                                 |
+|--------------|-----------------------------------------------------------------------------|
+| `raw/`       | Original data files (e.g. TIFFs, CSVs, videos)                              |
+| `metadata/`  | Text or spreadsheet files describing the session (date, subject ID, notes)  |
+| `processed/` | Cleaned or transformed data (e.g. ROI traces, motion corrected images)      |
+| `analysis/`  | Results of data analysis (e.g. ΔF/F traces, statistical outputs)            |
+| `figures/`   | Visualizations generated from analysis (plots, images, reports)             |
+| `README.md`  | Auto-generated placeholder file for notes about the recording               |
 
-4️⃣ Running Tests
+---
 
-To verify that everything works correctly, run:
+## 🧠 How to Use
 
-🚀 Future Enhancements
+1. **Add raw data** into the `raw/` folder of each recording.
+2. **Add metadata** files manually into `metadata/`.
+3. **Processed outputs** and **analysis results** from your pipeline should be saved in their respective folders.
+4. Use the `README.md` files to jot down notes, parameters, or manual observations.
 
-Automate metadata collection.
+---
 
-Add parallel processing for large datasets.
+## 🧰 Notes
 
-Enhance logging and error handling.
+- This structure was generated using an automated Python script to ensure consistency.
+- You can modify folder names or add additional subfolders as needed for your workflow.
+- The `config.json` file can be used by other scripts to automatically access and process your data.
 
-This project is designed to be scalable, efficient, and user-friendly.Feel free to contribute or suggest improvements! 🚀
+---
+
+Let us know if you modify the structure so downstream tools can be updated accordingly!
