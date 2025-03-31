@@ -23,15 +23,18 @@ class ProjectDataManager:
             return json.load(f)
 
     def initialize_directory_df(self):
-        """Generate a flat DataFrame of all group and recording paths."""
+        """Generate a flat DataFrame of all group and recording paths, including a session_id."""
         entries = []
+        session_counter = 1
         for group in self.config['groups']:
             for rec in group['recordings']:
                 entries.append({
+                    "session_id": session_counter,
                     "group": group['group_name'],
                     "recording": rec['recording_name'],
                     "path": rec['path']
                 })
+                session_counter += 1Adds a new column session_id that starts at 1 and increments for every recording.
         return pd.DataFrame(entries)
 
     def show(self):
