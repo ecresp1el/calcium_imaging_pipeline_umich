@@ -88,7 +88,9 @@ class SessionImageProcessor:
             print(f"No session found with ID {session_id}")
             return None
 
-        raw_folder = os.path.join(session_row.iloc[0]['path'], 'raw')
+        group = session_row.iloc[0]['group']
+        recording = session_row.iloc[0]['recording']
+        raw_folder = os.path.join(self.project.project_folder, group, recording, 'raw')
         if not os.path.exists(raw_folder):
             print(f"Raw folder does not exist for session {session_id}")
             return None
