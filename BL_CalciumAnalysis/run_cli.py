@@ -11,6 +11,8 @@ Usage:
 
 # Import the project manager class from cli.py
 from cli import ProjectDataManager
+from scripts.helpers import summarize_project_structure
+
 
 # Import the session image processing class (which contains the analysis logic)
 from image_analysis_processor import SessionImageProcessor  # assumes you saved the new class in this file
