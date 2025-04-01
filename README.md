@@ -12,8 +12,8 @@ This layout is designed to be consistent, easy to navigate, and friendly for bot
 
 ## 🗂️ Folder Structure Overview
 mannyproject/
-├── control/
-│   ├── recording_001/
+├── control/ <- group level, group #1
+│   ├── recording_001/ <- recording #1 from group #1
 │   │   ├── raw/
 │   │   ├── metadata/
 │   │   ├── processed/
@@ -23,7 +23,7 @@ mannyproject/
 │   ├── recording_002/
 │   │   └── … (same structure)
 │   └── README.md
-├── stimulated/
+├── stimulated/ <- <- group level, group #2
 │   └── … (same structure as control)
 ├── config.json
 └── README.md  ← (this file)

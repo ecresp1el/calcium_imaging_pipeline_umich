@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 from PIL import Image
+
 class ProjectDataManager:
     """
     Loads and organizes a structured calcium imaging project based on the config.json file.
