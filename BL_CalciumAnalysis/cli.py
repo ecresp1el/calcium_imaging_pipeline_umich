@@ -160,3 +160,36 @@ class SessionImageProcessor:
                 print(f"Error processing session {session_id}: {e}")
                 results[session_id] = str(e)
         return results
+    
+    def add_tiff_dimensions(self):
+        """
+        Analyzes the dimensions of TIF files in the directory DataFrame and adds this data as new columns.
+        """
+        df = self.project.directory_df
+
+        # Ensure the DataFrame has the columns for dimensions
+        if 'x_dim' not in df.columns:
+            df['x_dim'] = None
+            df['y_dim'] = None
+            df['z_dim_frames'] = None
+
+        # Iterate over each session_id and update the dimensions
+        for index, row in df.iterrows():
+            tif_path = self.get_session_raw_data(row['session_id'])
+            if isinstance(tif_path, str) and tif_path.endswith('.tif'):
+                try:
+                    with Image.open(tif_path) as img:
+                        df.at[index, 'x_dim'] = img.width
+                        df.at[index, 'y_dim'] = img.height
+                        # For z-dimension, count the frames
+                        img.seek(0)
+                        frames = 1
+                        while True:
+                            try:
+                                img.seek(img.tell() + 1)
+                                frames += 1
+                            except EOFError:
+                                break
+                        df.at[index, 'z_dim_frames'] = frames
+                except Exception as e:
+                    print(f"Could not process TIF dimensions for session {row['session_id']}: {e}")

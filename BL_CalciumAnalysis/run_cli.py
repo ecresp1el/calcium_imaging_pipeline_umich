@@ -41,6 +41,12 @@ def main():
     # If the user passed the --process_max_projections flag, run image processing
     if args.process_max_projections:
         processor = SessionImageProcessor(project)
+
+        # NEW: Run TIFF dimension analysis
+        print("Running TIFF dimension analysis...")
+        processor.add_tiff_dimensions()
+        print(project.directory_df[['session_id', 'x_dim', 'y_dim', 'z_dim_frames']])
+
         results = processor.analyze_all_sessions()
         
         # Display the results of the analysis
