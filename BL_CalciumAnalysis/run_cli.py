@@ -10,12 +10,13 @@ Usage:
 """
 
 # Import the project manager class from cli.py
-from cli import ProjectDataManager
+import sys 
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+#combine both imports into one line
+from cli import ProjectDataManager, SessionImageProcessor
 from scripts.helpers import summarize_project_structure
-
-
-# Import the session image processing class (which contains the analysis logic)
-from image_analysis_processor import SessionImageProcessor  # assumes you saved the new class in this file
 
 def main():
     import argparse  # argparse is a built-in Python library for parsing command-line arguments

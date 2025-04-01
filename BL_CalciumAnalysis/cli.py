@@ -2,6 +2,8 @@ import os
 import json
 import pandas as pd
 from PIL import Image
+import numpy as np
+from pathlib import Path
 
 class ProjectDataManager:
     """
@@ -115,11 +117,16 @@ class SessionImageProcessor:
 
             mean_image = sum_image / img.n_frames
 
-        processed_dir = os.path.join(os.path.dirname(tif_path), 'processed_data', 'processed_image_analysis_output')
+        # Store result in session-level 'processed/' folder
+        session_dir = os.path.dirname(os.path.dirname(tif_path))
+        processed_dir = os.path.join(session_dir, 'processed')
         os.makedirs(processed_dir, exist_ok=True)
 
-        file_name = os.path.basename(tif_path)
-        max_proj_image_path = os.path.join(processed_dir, file_name.replace('.tif', '_max_projection.tif'))
+        # Clean up filename to avoid extra periods
+        p = Path(tif_path)
+        safe_name = p.stem.replace('.', '_')
+        output_name = f"{safe_name}_max_projection.tif"
+        max_proj_image_path = os.path.join(processed_dir, output_name)
 
         Image.fromarray(mean_image.astype(np.uint8)).save(max_proj_image_path)
         print(f"Max projection saved: {max_proj_image_path}")
@@ -128,8 +135,11 @@ class SessionImageProcessor:
     def analyze_session_max_projection(self, session_id):
         tif_path = self.get_session_raw_data(session_id)
         if isinstance(tif_path, str) and tif_path.endswith('.tif'):
-            processed_dir = os.path.join(os.path.dirname(tif_path), 'processed_data', 'processed_image_analysis_output')
-            max_proj_filename = os.path.basename(tif_path).replace('.tif', '_max_projection.tif')
+            session_dir = os.path.dirname(os.path.dirname(tif_path))
+            processed_dir = os.path.join(session_dir, 'processed')
+            p = Path(tif_path)
+            safe_name = p.stem.replace('.', '_')
+            max_proj_filename = f"{safe_name}_max_projection.tif"
             max_proj_path = os.path.join(processed_dir, max_proj_filename)
 
             if os.path.exists(max_proj_path):

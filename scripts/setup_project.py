@@ -2,6 +2,8 @@ import os
 import json
 import tkinter as tk
 from tkinter import filedialog
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # 🛠️ Helper function to get user input with a default option
 def get_user_input(prompt, default=None):
