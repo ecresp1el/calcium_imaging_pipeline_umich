@@ -83,6 +83,7 @@ def load_config_widget(config_path: Path = None):
     group_selector.group_name.choices = groups
     group_selector.group_name.value = groups[0]
 
+    print(f"[DEBUG] Loaded config from: {config_path}")
     print(f"Number of groups: {len(groups)}")
     print(f"Group names: {', '.join(groups)}")
 
@@ -106,7 +107,10 @@ def generate_max_projection():
         print("[DEBUG] No recordings found for selected group.")
         return
 
-    recording = group_info["recordings"][0]
+    recording_index = widget_state["current_recording_index"]
+    print(f"[DEBUG] Current recording index: {recording_index}")
+    recording = group_info["recordings"][recording_index]
+    print(f"[DEBUG] Recording name: {recording['recording_name']}")
     recording_path = Path(recording["path"])
     raw_dir = recording_path / "raw"
     processed_dir = recording_path / "processed"
@@ -124,6 +128,7 @@ def generate_max_projection():
     else:
         movie = imread(movie_path)
 
+    print(f"[DEBUG] Finished loading movie: {movie_path.name}")
     print(f"[DEBUG] Movie shape: {movie.shape} (expecting 3D: T, H, W)")
     if movie.ndim != 3:
         print("[DEBUG] Movie must be 3D (time, height, width).")
@@ -201,7 +206,22 @@ def generate_max_projection():
 
     print("[DEBUG] ROI drawing layer with dynamic labeling initialized.")
 
-    widget_state["current_recording_index"] = 0  # or set manually per selector later
+@magicgui(call_button="Next Recording")
+def recording_navigator():
+    group_name = widget_state["selected_group"]
+    if group_name is None:
+        print("[DEBUG] No group selected.")
+        return
+    group_info = next((g for g in widget_state["config"]["groups"] if g["group_name"] == group_name), None)
+    recordings = group_info["recordings"]
+    current = widget_state["current_recording_index"]
+    if current + 1 >= len(recordings):
+        print("[DEBUG] Already at last recording.")
+        return
+    widget_state["current_recording_index"] += 1
+    print(f"[DEBUG] Moving to recording index {widget_state['current_recording_index']}")
+    print(f"[DEBUG] Now working on recording: {recordings[widget_state['current_recording_index']]['recording_name']}")
+    generate_max_projection()
 
 @magicgui(call_button="Save ROIs & Plot Traces")
 def save_rois_and_plot():
@@ -243,6 +263,7 @@ def save_rois_and_plot():
 
             trace = movie[:, mask].mean(axis=1)
             traces.append(trace)
+            print(f"[DEBUG] Extracted trace for ROI {labels[i]} with shape {trace.shape}")
 
         # Save calcium traces data
         traces_array = np.stack(traces)  # shape (num_rois, num_frames)
@@ -281,6 +302,7 @@ def save_rois_and_plot():
 viewer.window.add_dock_widget(load_config_widget, area='right')
 viewer.window.add_dock_widget(group_selector, area='right')
 viewer.window.add_dock_widget(generate_max_projection, area='right')
+viewer.window.add_dock_widget(recording_navigator, area='right')
 
 print("[DEBUG] Creating 'Save ROIs & Plot Traces' widget...")
 viewer.window.add_dock_widget(save_rois_and_plot, area='right')
