@@ -146,39 +146,57 @@ def generate_max_projection():
         text={"text": "{label}", "size": 14, "color": "white", "anchor": "center"},
         visible=True
     )
-    roi_layer.mode = "add_polygon_lasso"
+    
+    # Track next label manually
+    next_label = [1]  # use a mutable object to persist in closure
+
+    def update_current_label(*args):
+        roi_layer.current_properties = {"label": np.array([next_label[0]])}
+        print(f"[DEBUG] Pre-assigning label {next_label[0]} for next ROI")
 
     def label_new_roi(event):
         try:
             n_shapes = len(roi_layer.data)
-            current_labels = roi_layer.properties["label"]
+            if "label" not in roi_layer.properties:
+                current_labels = np.array([], dtype=int)
+            else:
+                current_labels = roi_layer.properties["label"]
 
             print(f"[DEBUG] ROI data count: {n_shapes}")
-            print(f"[DEBUG] ROI label count: {len(current_labels)}")
-            print(f"[DEBUG] Existing labels before update: {current_labels.tolist()}")
+            print(f"[DEBUG] Current labels: {current_labels.tolist()}")
 
-            # Check if label count matches but last label is still 0 (placeholder)
-            if len(current_labels) == n_shapes and current_labels[-1] == 0:
-                new_label = max(current_labels) + 1
-                current_labels[-1] = new_label
-                roi_layer.properties["label"] = current_labels
-                print(f"[DEBUG] Replaced placeholder label with: {new_label}")
+            updated = False
+            new_labels = current_labels.copy()
 
-            elif len(current_labels) < n_shapes:
-                next_label = max(current_labels.tolist() + [0]) + 1
-                updated_labels = np.append(current_labels, next_label)
-                roi_layer.properties["label"] = updated_labels
-                print(f"[DEBUG] Added new ROI label: {next_label}")
+            # Check for duplicates or zero-labels
+            needs_relabel = (
+                len(current_labels) < n_shapes or
+                len(set(current_labels)) != len(current_labels) or
+                any(label == 0 for label in current_labels)
+            )
 
+            if needs_relabel:
+                new_labels = np.arange(1, n_shapes + 1, dtype=int)
+                updated = True
+                for i, label in enumerate(new_labels):
+                    print(f"[DEBUG] Assigned label {label} to ROI index {i}")
+
+            if updated:
+                roi_layer.properties["label"] = new_labels
+                roi_layer.features = {"label": new_labels}
+                next_label[0] = len(new_labels) + 1  # update next label
+                print(f"[DEBUG] Updated labels: {new_labels.tolist()}")
             else:
-                print("[DEBUG] Shape added, but label count already matches and is valid.")
-
-            print(f"[DEBUG] Updated labels: {roi_layer.properties['label'].tolist()}")
+                print("[DEBUG] No updates needed for labels.")
 
         except Exception as e:
             print(f"[DEBUG] ROI label assignment error: {e}")
 
+    roi_layer.mode = "add_polygon_lasso"
+    roi_layer.current_properties = {"label": np.array([1])}
     roi_layer.events.data.connect(label_new_roi)
+    roi_layer.events.mode.connect(update_current_label)
+
     print("[DEBUG] ROI drawing layer with dynamic labeling initialized.")
 
     widget_state["current_recording_index"] = 0  # or set manually per selector later
