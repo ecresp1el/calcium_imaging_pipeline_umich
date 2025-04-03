@@ -17,6 +17,8 @@ from magicgui import magicgui
 import json
 from pathlib import Path
 from skimage.io import imread
+from qtpy.QtWidgets import QPushButton
+import matplotlib.pyplot as plt
 
 # Create viewer instance and attach widgets
 viewer = napari.Viewer()
@@ -201,9 +203,88 @@ def generate_max_projection():
 
     widget_state["current_recording_index"] = 0  # or set manually per selector later
 
+@magicgui(call_button="Save ROIs & Plot Traces")
+def save_rois_and_plot():
+    try:
+        roi_layer = viewer.layers["ROIs"]
+        movie_layer = viewer.layers["Calcium Movie"]
+
+        shapes = roi_layer.data
+        labels = roi_layer.properties["label"].tolist()
+        print(f"[DEBUG] Saving {len(shapes)} ROIs with labels: {labels}")
+
+        recording_index = widget_state["current_recording_index"]
+        selected_group = widget_state["selected_group"]
+        group_info = next((g for g in widget_state["config"]["groups"] if g["group_name"] == selected_group), None)
+        recording = group_info["recordings"][recording_index]
+        processed_dir = Path(recording["path"]) / "processed"
+        processed_dir.mkdir(exist_ok=True)
+
+        figures_dir = Path(recording["path"]) / "figures"
+        figures_dir.mkdir(exist_ok=True)
+
+        roi_json_path = processed_dir / "rois.json"
+        roi_data = [{"label": int(label), "vertices": shape.tolist()} for label, shape in zip(labels, shapes)]
+        with open(roi_json_path, "w") as f:
+            json.dump(roi_data, f, indent=4)
+        print(f"[DEBUG] ROIs saved to: {roi_json_path}")
+
+        # Extract calcium traces
+        movie = movie_layer.data  # shape (T, H, W)
+        n_frames = movie.shape[0]
+        traces = []
+
+        for i, poly in enumerate(shapes):
+            mask = np.zeros(movie.shape[1:], dtype=bool)
+            rr, cc = np.round(poly[:, 0]).astype(int), np.round(poly[:, 1]).astype(int)
+            rr = np.clip(rr, 0, mask.shape[0]-1)
+            cc = np.clip(cc, 0, mask.shape[1]-1)
+            mask[rr, cc] = True
+
+            trace = movie[:, mask].mean(axis=1)
+            traces.append(trace)
+
+        # Save calcium traces data
+        traces_array = np.stack(traces)  # shape (num_rois, num_frames)
+        trace_npy_path = processed_dir / "calcium_traces.npy"
+        np.save(trace_npy_path, traces_array)
+        print(f"[DEBUG] Traces saved to: {trace_npy_path}")
+
+        # Also save as CSV for easier inspection
+        trace_csv_path = processed_dir / "calcium_traces.csv"
+        with open(trace_csv_path, "w") as f:
+            header = ["frame"] + [f"roi_{label}" for label in labels]
+            f.write(",".join(header) + "\n")
+            for frame_idx in range(traces_array.shape[1]):
+                row = [str(frame_idx)] + [f"{traces_array[roi_idx, frame_idx]:.4f}" for roi_idx in range(traces_array.shape[0])]
+                f.write(",".join(row) + "\n")
+        print(f"[DEBUG] Traces CSV saved to: {trace_csv_path}")
+
+        fig, ax = plt.subplots()
+        for i, trace in enumerate(traces):
+            ax.plot(trace, label=f"ROI {labels[i]}")
+        ax.set_title("Calcium Signal Traces")
+        ax.set_xlabel("Frame")
+        ax.set_ylabel("Mean Intensity")
+        ax.legend()
+
+        trace_fig_path = figures_dir / "calcium_traces.png"
+        fig.savefig(trace_fig_path)
+        print(f"[DEBUG] Trace figure saved to: {trace_fig_path}")
+
+        viewer.window.add_dock_widget(fig.canvas, name="Calcium Traces", area="bottom")
+        print("[DEBUG] Calcium traces plotted in napari.")
+
+    except Exception as e:
+        print(f"[DEBUG] Error saving ROIs or plotting traces: {e}")
+
 viewer.window.add_dock_widget(load_config_widget, area='right')
 viewer.window.add_dock_widget(group_selector, area='right')
 viewer.window.add_dock_widget(generate_max_projection, area='right')
+
+print("[DEBUG] Creating 'Save ROIs & Plot Traces' widget...")
+viewer.window.add_dock_widget(save_rois_and_plot, area='right')
+print("[DEBUG] 'Save ROIs & Plot Traces' widget added to Napari.")
 
 # Run napari event loop
 napari.run()
