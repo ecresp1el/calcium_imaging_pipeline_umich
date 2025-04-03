@@ -1,14 +1,26 @@
 """
 BL_CalciumAnalysis - Napari ROI Drawer Widget
 
-This module defines a reproducible Napari widget using magicgui to:
-1. Load a calcium imaging movie from a structured project using config.json
-2. Compute the max Z-projection (projection over time)
-3. Display both the full movie and projection
-4. Enable manual ROI drawing using napari's shape layer
-5. Save ROI polygon coordinates as JSON in the /processed folder
+This interactive Napari GUI widget supports a reproducible workflow for calcium imaging analysis.
 
-Author: Your Name
+High-Level Workflow:
+--------------------
+1. Load a structured project using `config.json`.
+2. Select a group and initialize its recordings.
+3. Load one recording at a time and compute its max Z-projection.
+4. Display both the full calcium movie and the max projection.
+5. Allow the user to manually draw labeled ROIs on the projection.
+6. Save ROI coordinates, calcium traces, and figures for each recording.
+7. Navigate through all recordings in a group using the "Next Recording" button.
+
+Key Outputs per Recording:
+--------------------------
+- /processed/rois.json            : Coordinates and labels for each manually drawn ROI.
+- /processed/calcium_traces.npy  : Raw signal data extracted from each ROI over time.
+- /processed/calcium_traces.csv  : Human-readable version of signal traces with ROI labels.
+- /figures/calcium_traces.png    : Plot showing all calcium traces from the ROIs.
+
+Author: Emmanuel Luis Crespo
 """
 
 import numpy as np
@@ -32,6 +44,16 @@ widget_state = {
 }
 
 def select_group(group_name: str):
+    """
+    Callback triggered when the user selects a group from the dropdown.
+
+    Sets the selected group in widget state, and logs available recordings in that group.
+
+    Parameters
+    ----------
+    group_name : str
+        The name of the group selected by the user.
+    """
     print(f"[DEBUG] Group selected: {group_name}")
     widget_state["selected_group"] = group_name
 
@@ -62,12 +84,14 @@ group_selector = magicgui(
 @magicgui(call_button="Load Project Config")
 def load_config_widget(config_path: Path = None):
     """
-    Load the config.json file which defines the structure of the calcium imaging project.
+    Load a calcium imaging project configuration from a JSON file.
+
+    This sets the project root and available groups into the widget state and populates the group selector.
 
     Parameters
     ----------
     config_path : Path
-        Path to the config.json file at the root of the project folder.
+        Path to the `config.json` file defining the project structure.
     """
     if not config_path or not config_path.is_file():
         print("Please select a valid config.json file.")
@@ -91,6 +115,12 @@ def load_config_widget(config_path: Path = None):
 
 @magicgui(call_button="Generate Max Projection")
 def generate_max_projection():
+    """
+    Load and process the calcium movie for the current recording.
+
+    Computes the max intensity projection, displays the movie and projection in Napari,
+    and initializes the ROI drawing layer with dynamic label handling.
+    """
     global viewer
     if widget_state["config"] is None:
         print("[DEBUG] Config not loaded.")
@@ -208,6 +238,12 @@ def generate_max_projection():
 
 @magicgui(call_button="Next Recording")
 def recording_navigator():
+    """
+    Advance to the next recording within the currently selected group.
+
+    Increments the recording index and triggers loading and visualization
+    for the new recording.
+    """
     group_name = widget_state["selected_group"]
     if group_name is None:
         print("[DEBUG] No group selected.")
@@ -225,6 +261,13 @@ def recording_navigator():
 
 @magicgui(call_button="Save ROIs & Plot Traces")
 def save_rois_and_plot():
+    """
+    Save manually drawn ROIs and extract calcium traces from the movie.
+
+    Outputs ROI polygon data to JSON, calcium traces to both NPY and CSV,
+    and saves a figure showing the extracted traces. All outputs are saved
+    under the appropriate recording directory (`processed/`, `figures/`).
+    """
     try:
         roi_layer = viewer.layers["ROIs"]
         movie_layer = viewer.layers["Calcium Movie"]
