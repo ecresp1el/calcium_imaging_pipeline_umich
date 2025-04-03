@@ -14,6 +14,6 @@ dependencies:
   - pillow
   - jupyter
   - ipython
+  - napari
+  - pyqt  # required GUI backend for napari
   - pip
-  - pip:
-      - ipympl
