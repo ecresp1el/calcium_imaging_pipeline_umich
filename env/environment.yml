@@ -1,4 +1,4 @@
-name: biolumi_calcium_cli
+name: calcium_imaging_cli
 channels:
   - conda-forge
 dependencies:
