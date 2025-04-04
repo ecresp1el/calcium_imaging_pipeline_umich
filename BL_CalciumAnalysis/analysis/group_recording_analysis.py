@@ -1,9 +1,24 @@
 """
 BL_CalciumAnalysis - Group and Recording Level Analysis Module
 
-This module defines classes and methods for programmatic, reproducible analysis of calcium imaging data.
-It uses the `config.json` structure to derive project paths, loads calcium trace data from CSV files,
-and provides utilities to visualize and summarize calcium dynamics at both the single-recording and group level.
+This module provides tools for the analysis and visualization of calcium imaging data from structured project folders.
+It supports both single-recording and group-level workflows, and is designed to be fully reproducible and beginner-friendly.
+
+Overview of how it works:
+-------------------------
+- Each recording folder contains a processed calcium_traces.csv file with traces from manually drawn ROIs.
+- The first ROI (column) is treated as background and excluded from analysis of cellular responses.
+- This script includes tools to:
+    1. Plot individual calcium traces per ROI.
+    2. Compute and plot the mean ± SEM traces across ROIs.
+    3. Calculate and visualize ΔF/F (change in fluorescence relative to baseline) traces.
+    4. Save summary statistics and plots for integration into group-level comparisons.
+
+Usage:
+------
+You can run analysis for a single recording or batch process all recordings defined in a config.json file
+by using the test_recording_analysis.py script. Figures and CSVs will be automatically saved into
+`figures/` and `analysis/` subdirectories within each recording folder.
 
 Author: Emmanuel Luis Crespo
 """
@@ -17,9 +32,18 @@ from typing import List, Optional
 
 class CalciumRecordingAnalysis:
     """
-    Represents a single recording session for calcium imaging analysis.
+    This class handles analysis of a single calcium imaging recording.
 
-    Responsible for loading and plotting calcium traces from the recording's trace CSV file.
+    It loads the trace data from a calcium_traces.csv file within the given recording directory,
+    and offers several methods to generate plots and metrics useful for downstream analysis.
+
+    Each method handles a specific type of analysis and outputs its results as:
+    - Visual plots (.png) saved in the recording's /figures/ folder
+    - Data tables (.csv) saved in the recording's /analysis/ folder
+
+    IMPORTANT:
+    - The first ROI (first column after 'frame') is assumed to be background signal and is excluded
+      from calculations like ΔF/F, mean, SEM, and ROI-wise plots.
     """
 
     def __init__(self, recording_path: Path):
