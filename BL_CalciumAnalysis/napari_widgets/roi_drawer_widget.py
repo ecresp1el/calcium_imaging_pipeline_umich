@@ -75,6 +75,11 @@ def select_group(group_name: str):
     if recordings:
         first_recording = recordings[0]
         print(f"[DEBUG] Path to first recording: {first_recording['path']}")
+    
+    # Reset the recording index to 0 when a new group is selected
+    # This avoids indexing errors if the previous group had more recordings
+    widget_state["current_recording_index"] = 0
+    print(f"[DEBUG] Recording index reset to 0 for group: {group_name}")
 
 group_selector = magicgui(
     select_group,
@@ -122,6 +127,7 @@ def generate_max_projection():
     and initializes the ROI drawing layer with dynamic label handling.
     """
     global viewer
+    # Set up Napari viewer and dynamic ROI layer with label tracking.
     if widget_state["config"] is None:
         print("[DEBUG] Config not loaded.")
         return
@@ -232,6 +238,17 @@ def generate_max_projection():
     roi_layer.mode = "add_polygon_lasso"
     roi_layer.current_properties = {"label": np.array([1])}
     roi_layer.events.data.connect(label_new_roi)
+
+    def recalculate_next_label(event=None):
+        current_labels = roi_layer.properties.get("label", [])
+        if len(current_labels) > 0:
+            next_label[0] = max(current_labels) + 1
+        else:
+            next_label[0] = 1
+        print(f"[DEBUG] Recalculated next label: {next_label[0]}")
+
+    roi_layer.events.data.connect(recalculate_next_label)
+    
     roi_layer.events.mode.connect(update_current_label)
 
     print("[DEBUG] ROI drawing layer with dynamic labeling initialized.")
