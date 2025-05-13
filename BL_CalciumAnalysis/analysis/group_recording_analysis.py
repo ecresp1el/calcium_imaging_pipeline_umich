@@ -288,6 +288,267 @@ class CalciumRecordingAnalysis:
         plt.close()
 
 
+class Biolumi_CalciumRecordingAnalysis:
+    """
+    This class handles analysis of a single bioluminescent calcium imaging recording.
+
+    It loads the trace data from a calcium_traces.csv file within the given recording directory,
+    and offers several methods to generate plots and metrics useful for downstream analysis.
+
+    Each method handles a specific type of analysis and outputs its results as:
+    - Visual plots (.png) saved in the recording's /figures/ folder
+    - Data tables (.csv) saved in the recording's /analysis/ folder
+
+    IMPORTANT:
+    - The first ROI (first column after 'frame') is assumed to be background signal and is excluded
+      from calculations like ΔL, mean, SEM, and ROI-wise plots.
+    """
+
+    def __init__(self, recording_path: Path):
+        """
+        Initialize the analysis object with a path to a specific recording.
+
+        Parameters
+        ----------
+        recording_path : Path
+            Full path to the recording directory containing the processed/ folder.
+        """
+        self.recording_path = recording_path
+        self.traces_csv_path = recording_path / "processed" / "calcium_traces.csv"
+        self.trace_df: Optional[pd.DataFrame] = None
+
+    def load_trace_data(self):
+        """
+        Load bioluminescent calcium trace data from the recording's CSV file.
+
+        The CSV should contain a 'frame' column and one column per ROI (e.g., roi_1, roi_2, ...).
+        """
+        if not self.traces_csv_path.exists():
+            raise FileNotFoundError(f"Trace CSV not found: {self.traces_csv_path}")
+        self.trace_df = pd.read_csv(self.traces_csv_path)
+        print(f"[DEBUG] Loaded trace data from: {self.traces_csv_path}")
+
+    def plot_all_traces(self, save_path: Optional[Path] = None):
+        """
+        Plot all ROI traces from the recording.
+
+        Parameters
+        ----------
+        save_path : Path, optional
+            If provided, save the plot to this path. Otherwise, show interactively.
+        """
+        if self.trace_df is None:
+            self.load_trace_data()
+
+        plt.figure(figsize=(12, 5))
+        for col in self.trace_df.columns:
+            if col != "frame":
+                plt.plot(self.trace_df["frame"], self.trace_df[col], label=col)
+        plt.xlabel("Frame")
+        plt.ylabel("Mean Intensity")
+        plt.title(f"Bioluminescent Calcium Traces - {self.recording_path.name}")
+        plt.legend()
+        plt.tight_layout()
+
+        if save_path:
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path)
+            print(f"[DEBUG] Saved trace plot to: {save_path}")
+        else:
+            plt.show()
+
+    def analyze_and_plot_mean_sem(self, save_path: Optional[Path] = None):
+        """
+        Compute the mean and SEM across all ROIs at each frame, save the data and plot.
+
+        Output:
+        - analysis/mean_sem_summary.csv : stores 'frame', 'mean', and 'sem' for each frame.
+        - figures/mean_sem_plot.png     : plot of mean ± SEM over time.
+        """
+        if self.trace_df is None:
+            self.load_trace_data()
+
+        df = self.trace_df.copy()
+        frames = df["frame"]
+        roi_values = df.drop(columns=["frame"])
+        mean = roi_values.mean(axis=1)
+        sem = roi_values.sem(axis=1)
+
+        # Combine into summary DataFrame
+        summary_df = pd.DataFrame({
+            "frame": frames,
+            "mean": mean,
+            "sem": sem
+        })
+
+        # Save CSV
+        analysis_dir = self.recording_path / "analysis"
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = analysis_dir / "mean_sem_summary.csv"
+        summary_df.to_csv(csv_path, index=False)
+        print(f"[DEBUG] Saved mean/SEM data to: {csv_path}")
+
+        # Plot and save figure
+        if save_path:
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            fig_path = save_path
+        else:
+            fig_dir = self.recording_path / "figures"
+            fig_dir.mkdir(parents=True, exist_ok=True)
+            fig_path = fig_dir / "mean_sem_plot.png"
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(frames, mean, label="Mean", color="blue")
+        plt.fill_between(frames, mean - sem, mean + sem, alpha=0.3, color="blue", label="±SEM")
+        plt.xlabel("Frame")
+        plt.ylabel("Mean Intensity")
+        plt.title(f"Mean ± SEM Bioluminescent Calcium Trace - {self.recording_path.name}")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(fig_path)
+        print(f"[DEBUG] Saved plot to: {fig_path}")
+        plt.close()
+
+    def compute_and_plot_delta_L(self, group_name: str):
+        '''
+        Compute and plot ΔL traces, excluding the first ROI (assumed background).
+
+        This method:
+        - Computes ΔL relative to the mean of the first 10 frames for each ROI.
+          This baseline is more appropriate for bioluminescent data where initial frames provide a stable baseline.
+        - Plots individual traces with a bold mean trace.
+        - Plots mean ± SEM with shaded error bars.
+        - Saves plots and CSV summaries to the appropriate subfolders.
+        '''
+        if self.trace_df is None:
+            self.load_trace_data()
+
+        df = self.trace_df.copy()
+        frames = df["frame"]
+        roi_signals = df.drop(columns=["frame"])
+
+        # Exclude the first ROI (assumed to be background)
+        roi_signals = roi_signals.iloc[:, 1:]
+
+        # Compute ΔL using mean of first 10 frames as baseline (L0)
+        baseline_frames = 10
+        l0 = roi_signals.iloc[:baseline_frames].mean(axis=0)
+        delta_l = (roi_signals - l0) / l0
+
+        # Save delta L data
+        dl_df = pd.concat([frames, delta_l], axis=1)
+        dl_csv_path = self.recording_path / "analysis" / "delta_l_traces.csv"
+        dl_df.to_csv(dl_csv_path, index=False)
+        print(f"[DEBUG] Saved ΔL data to: {dl_csv_path}")
+
+        # Plot all traces with mean overlay
+        plt.figure(figsize=(12, 5))
+        for col in delta_l.columns:
+            plt.plot(frames, delta_l[col], color="gray", alpha=0.3, linewidth=0.8)
+        mean_trace = delta_l.mean(axis=1)
+        plt.plot(frames, mean_trace, color="black", linewidth=2.0, label="Mean ΔL")
+        plt.xlabel("Frame")
+        plt.ylabel("ΔL")
+        plt.title(f"ΔL Traces - {self.recording_path.name}")
+        plt.legend()
+        plt.tight_layout()
+        trace_fig_path = self.recording_path / "figures" / f"{group_name}_{self.recording_path.name}_deltaL_traces.png"
+        trace_fig_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(trace_fig_path)
+        print(f"[DEBUG] Saved ΔL trace plot to: {trace_fig_path}")
+        plt.close()
+
+        # Compute mean and SEM for ΔL
+        mean_dl = delta_l.mean(axis=1)
+        sem_dl = delta_l.sem(axis=1)
+
+        # Save summary
+        dl_summary_df = pd.DataFrame({
+            "frame": frames,
+            "mean": mean_dl,
+            "sem": sem_dl
+        })
+        dl_summary_csv_path = self.recording_path / "analysis" / "delta_l_summary.csv"
+        dl_summary_df.to_csv(dl_summary_csv_path, index=False)
+        print(f"[DEBUG] Saved ΔL mean/SEM summary to: {dl_summary_csv_path}")
+
+        # Plot mean ± SEM
+        plt.figure(figsize=(10, 5))
+        plt.plot(frames, mean_dl, label="Mean ΔL", color="blue")
+        plt.fill_between(frames, mean_dl - sem_dl, mean_dl + sem_dl, alpha=0.3, color="blue", label="±SEM")
+        plt.xlabel("Frame")
+        plt.ylabel("ΔL")
+        plt.title(f"Mean ± SEM ΔL - {self.recording_path.name}")
+        plt.legend()
+        plt.tight_layout()
+        sem_fig_path = self.recording_path / "figures" / f"{group_name}_{self.recording_path.name}_deltaL_mean_sem.png"
+        plt.savefig(sem_fig_path)
+        print(f"[DEBUG] Saved ΔL mean/SEM plot to: {sem_fig_path}")
+        plt.close()
+
+    def plot_delta_L_subset(self, group_name: str, n_frames: int = 15):
+        """
+        Plot ΔL traces and mean ± SEM for the first `n_frames` frames only.
+
+        Parameters
+        ----------
+        group_name : str
+            Name of the group for filename labeling.
+        n_frames : int
+            Number of frames to include in the plot (default is 15).
+        """
+        if self.trace_df is None:
+            self.load_trace_data()
+
+        df = self.trace_df.copy()
+        frames = df["frame"]
+        roi_signals = df.drop(columns=["frame"])
+
+        # Exclude the first ROI (background)
+        roi_signals = roi_signals.iloc[:, 1:]
+
+        # Compute ΔL using mean of first 10 frames as baseline (L0)
+        baseline_frames = 10
+        l0 = roi_signals.iloc[:baseline_frames].mean(axis=0)
+        delta_l = (roi_signals - l0) / l0
+
+        # Subset to first `n_frames`
+        delta_l_subset = delta_l.iloc[:n_frames]
+        frames_subset = frames.iloc[:n_frames]
+        mean_subset = delta_l_subset.mean(axis=1)
+        sem_subset = delta_l_subset.sem(axis=1)
+
+        # Plot subset traces
+        plt.figure(figsize=(10, 5))
+        for col in delta_l_subset.columns:
+            plt.plot(frames_subset, delta_l_subset[col], color="gray", alpha=0.3, linewidth=0.8)
+        plt.plot(frames_subset, mean_subset, color="black", linewidth=2.0, label="Mean ΔL")
+        plt.xlabel("Frame")
+        plt.ylabel("ΔL")
+        plt.title(f"ΔL Traces (first {n_frames} frames) - {self.recording_path.name}")
+        plt.legend()
+        plt.tight_layout()
+        trace_fig = self.recording_path / "figures" / f"{group_name}_{self.recording_path.name}_deltaL_subset_traces.png"
+        trace_fig.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(trace_fig)
+        print(f"[DEBUG] Saved ΔL subset trace plot to: {trace_fig}")
+        plt.close()
+
+        # Plot mean ± SEM for subset
+        plt.figure(figsize=(10, 5))
+        plt.plot(frames_subset, mean_subset, label="Mean ΔL", color="blue")
+        plt.fill_between(frames_subset, mean_subset - sem_subset, mean_subset + sem_subset, alpha=0.3, color="blue", label="±SEM")
+        plt.xlabel("Frame")
+        plt.ylabel("ΔL")
+        plt.title(f"ΔL Mean ± SEM (first {n_frames} frames) - {self.recording_path.name}")
+        plt.legend()
+        plt.tight_layout()
+        sem_fig = self.recording_path / "figures" / f"{group_name}_{self.recording_path.name}_deltaL_subset_mean_sem.png"
+        plt.savefig(sem_fig)
+        print(f"[DEBUG] Saved ΔL subset mean/SEM plot to: {sem_fig}")
+        plt.close()
+
+
 class CalciumGroupAnalysis:
     """
     Performs group-level analysis across multiple recordings defined in a config.json file.
