@@ -1,8 +1,9 @@
 """
-Test Script: Recording-Level Analysis
+Test Script: Bioluminescent Recording-Level Analysis
 
 This script prompts the user to select a config.json file,
-then loads the first recording in the first group listed and runs analysis.
+then runs bioluminescent calcium analysis on either the first recording
+or all recordings listed in the config.
 
 Author: Emmanuel Luis Crespo
 """
@@ -18,7 +19,7 @@ repo_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo_root))
 
 from tkinter import Tk, filedialog
-from BL_CalciumAnalysis.analysis.group_recording_analysis import CalciumRecordingAnalysis
+from BL_CalciumAnalysis.analysis.group_recording_analysis import Biolumi_CalciumRecordingAnalysis
 
 # === Step 1: Prompt user to select config file ===
 print("[TEST] Please select your config.json file...")
@@ -35,11 +36,11 @@ if not config_path:
 config_path = Path(config_path)
 print(f"[TEST] Loaded config from: {config_path}")
 
-# === Step 2: Load config and get first recording path ===
+# === Step 2: Load config and parse args ===
 with open(config_path, "r") as f:
     config_data = json.load(f)
 
-parser = argparse.ArgumentParser(description="Test recording-level calcium imaging analysis.")
+parser = argparse.ArgumentParser(description="Test bioluminescent calcium imaging analysis.")
 parser.add_argument("--all", action="store_true", help="Run analysis for all groups and recordings in the config.")
 args = parser.parse_args()
 
@@ -51,7 +52,7 @@ if not args.all:
     group_name = first_group["group_name"]
 
     print(f"[TEST] Running analysis on: {recording_path.name} (Group: {group_name})")
-    analysis = CalciumRecordingAnalysis(recording_path)
+    analysis = Biolumi_CalciumRecordingAnalysis(recording_path)
 
     print("[TEST] Plotting and saving raw traces...")
     raw_plot_path = recording_path / "figures" / f"{group_name}_{recording_path.name}_raw_traces.png"
@@ -62,10 +63,10 @@ if not args.all:
     analysis.analyze_and_plot_mean_sem(save_path=sem_plot_path)
     print(f"[TEST] Saved SEM plot to: {sem_plot_path}")
 
-    print("[TEST] Computing and plotting ΔF/F...")
-    analysis.compute_and_plot_delta_f(group_name=group_name)
-    print("[TEST] Plotting ΔF/F subset (first 10 frames)...")
-    analysis.plot_delta_f_subset(group_name=group_name)
+    print("[TEST] Computing and plotting ΔL...")
+    analysis.compute_and_plot_delta_L(group_name=group_name)
+    print("[TEST] Plotting ΔL subset (first 10 frames)...")
+    analysis.plot_delta_L_subset(group_name=group_name)
     print("[TEST ✅] Recording-level test complete.")
 
 else:
@@ -77,7 +78,7 @@ else:
         for recording in tqdm(group["recordings"], desc=f"Recordings ({group_name})", leave=False):
             recording_path = Path(recording["path"])
             print(f"[DEBUG]  → Recording: {recording_path.name}")
-            analysis = CalciumRecordingAnalysis(recording_path)
+            analysis = Biolumi_CalciumRecordingAnalysis(recording_path)
 
             raw_plot_path = recording_path / "figures" / f"{group_name}_{recording_path.name}_raw_traces.png"
             analysis.plot_all_traces(save_path=raw_plot_path)
@@ -87,8 +88,8 @@ else:
             analysis.analyze_and_plot_mean_sem(save_path=sem_plot_path)
             print(f"[DEBUG]     Saved SEM plot to: {sem_plot_path}")
 
-            analysis.compute_and_plot_delta_f(group_name=group_name)
-            analysis.plot_delta_f_subset(group_name=group_name)
-            print(f"[DEBUG]     Saved ΔF/F subset plots for: {recording_path.name}")
-            print(f"[DEBUG]     Completed ΔF/F analysis for: {recording_path.name}")
+            analysis.compute_and_plot_delta_L(group_name=group_name)
+            analysis.plot_delta_L_subset(group_name=group_name)
+            print(f"[DEBUG]     Saved ΔL subset plots for: {recording_path.name}")
+            print(f"[DEBUG]     Completed ΔL analysis for: {recording_path.name}")
     print("[TEST ✅] Full group and recording-level analysis complete.")
